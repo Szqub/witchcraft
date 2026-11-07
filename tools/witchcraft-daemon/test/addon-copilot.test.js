@@ -12,7 +12,7 @@ test('addon files remain Lua 5.1 compatible', () => {
   }
 });
 
-test('Lua controller preserves Copilot settings, cycles tabs and accepts old and new snapshots', () => {
+test('Lua controller preserves existing tabs and extends the ring to Hermes and T3 Code', () => {
   const { lua, lauxlib, lualib, to_luastring, to_jsstring } = fengari;
   const state = lauxlib.luaL_newstate();
   lualib.luaL_openlibs(state);
@@ -42,6 +42,17 @@ test('Lua controller preserves Copilot settings, cycles tabs and accepts old and
       assert(#controller:Snapshot().tabs == 3)
       controller:NextTab(); assert(controller.global.activeTab == "codex")
       controller:NextTab(); assert(controller.global.activeTab == "copilot")
+      controller.sessions = {
+        {id="claude",title="Claude",lines={},status="running"},
+        {id="codex",title="Codex",lines={},status="running"},
+        {id="copilot",title="Copilot",lines={},status="running"},
+        {id="hermes",title="Hermes",lines={},status="running"},
+        {id="t3code",title="T3 Code",lines={},status="running"},
+      }
+      assert(#controller:Snapshot().tabs == 5)
+      controller:NextTab(); assert(controller.global.activeTab == "hermes")
+      controller:NextTab(); assert(controller.global.activeTab == "t3code")
+      controller:NextTab(); assert(controller.global.activeTab == "claude")
       assert(not controller:SelectTab("unknown"))
       local function session(id) return { id = id, title = id, status = "running", lines = { id } } end
       local copied = ns.Ring.Sessions({ session("copilot"), session("claude"), session("codex") }, 40)
@@ -51,6 +62,10 @@ test('Lua controller preserves Copilot settings, cycles tabs and accepts old and
       assert(not ns.Ring.Sessions({ session("claude"), session("codex"), session("codex") }, 40))
       assert(not ns.Ring.Sessions({ session("claude"), session("codex"), session("unknown") }, 40))
       assert(ns.Pixel.Encode({ epoch = "1234abcd", id = 1, tab = "copilot", action = "text", text = "hello" }))
+      local expanded = ns.Ring.Sessions({ session("t3code"), session("hermes"), session("codex"), session("copilot"), session("claude") }, 40)
+      assert(expanded and #expanded == 5 and expanded[4].id == "hermes" and expanded[5].id == "t3code")
+      assert(ns.Pixel.Encode({ epoch = "1234abcd", id = 2, tab = "hermes", action = "text", text = "hello" }))
+      assert(ns.Pixel.Encode({ epoch = "1234abcd", id = 3, tab = "t3code", action = "text", text = "hello" }))
     `);
   } finally { lua.lua_close(state); }
 });

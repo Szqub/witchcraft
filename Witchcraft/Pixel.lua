@@ -5,7 +5,7 @@ ns.Pixel = Pixel
 
 local floor = math.floor
 local ACTIONS = { text = 0, enter = 1, interrupt = 2, escape = 3, up = 4, down = 5 }
-local TABS = { claude = 1, codex = 2, copilot = 3 }
+local TABS = { claude = 1, codex = 2, copilot = 3, hermes = 4, t3code = 5 }
 local MAX_ID, MAX_TEXT = 262143, 600
 local BURST_ROWS, BURST_TEXT = 22, 560
 local BURST_TOKEN = "WITCHCRAFT-BURST-PROBE|"

@@ -6,8 +6,9 @@ import {
   validatedTerminalGeometry,
 } from './terminal-policy.js';
 
-const TITLES = { claude: 'Claude', codex: 'Codex', copilot: 'Copilot' };
-const VALID_TABS = new Set(['claude', 'codex', 'copilot']);
+const TITLES = { claude: 'Claude', codex: 'Codex', copilot: 'Copilot', hermes: 'Hermes', t3code: 'T3 Code' };
+const TAB_ORDER = ['claude', 'codex', 'copilot', 'hermes', 't3code'];
+const VALID_TABS = new Set(TAB_ORDER);
 const VALID_CONNECTIONS = new Set(['connecting', 'connected', 'disconnected', 'error']);
 const api = window.witchcraft;
 
@@ -487,7 +488,7 @@ async function loadTerminals() {
         theme: {
           background: '#01030400',
           foreground: '#d8e0e2',
-          cursor: ({ claude: '#f0c777', codex: '#62c5dc', copilot: '#b79df2' })[id],
+          cursor: ({ claude: '#f0c777', codex: '#62c5dc', copilot: '#b79df2', hermes: '#78d295', t3code: '#78abf4' })[id],
           cursorAccent: '#010304',
           selectionBackground: '#d0a45c40',
           selectionInactiveBackground: '#8b989f28',
@@ -565,7 +566,7 @@ function bindEvents() {
   for (const [id, view] of Object.entries(tabs)) {
     view.button.addEventListener('click', () => selectTab(id));
     view.button.addEventListener('keydown', event => {
-      const order = ['claude', 'codex', 'copilot'];
+      const order = TAB_ORDER;
       const index = order.indexOf(id);
       let next = null;
       if (event.key === 'ArrowRight' || event.key === 'ArrowDown') next = order[(index + 1) % order.length];
@@ -605,9 +606,9 @@ function bindEvents() {
     }
   });
   document.addEventListener('keydown', event => {
-    if (event.altKey && !event.ctrlKey && !event.shiftKey && ['Digit1', 'Digit2', 'Digit3'].includes(event.code)) {
+    if (event.altKey && !event.ctrlKey && !event.shiftKey && /^Digit[1-5]$/u.test(event.code)) {
       event.preventDefault();
-      selectTab(['claude', 'codex', 'copilot'][Number(event.code.slice(-1)) - 1]);
+      selectTab(TAB_ORDER[Number(event.code.slice(-1)) - 1]);
       return;
     }
     if (event.ctrlKey && event.shiftKey && event.code === 'KeyH') {

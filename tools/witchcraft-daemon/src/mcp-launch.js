@@ -1,4 +1,3 @@
-import { AGENT_TABS } from './agents.js';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import os from 'node:os';
@@ -20,7 +19,9 @@ export function serverCommand({ cachePath, nodePath = process.execPath, scriptPa
 export function withWoWMcp(tab, entry, options = {}) {
   if (!entry) return entry;
   const basename = path.basename(entry.file).toLowerCase().replace(/\.exe$/u, '');
-  if (!AGENT_TABS.includes(tab) || basename !== tab) return entry;
+  // Claude, Codex and Copilot accept these launch flags. Hermes has a different
+  // MCP configuration format; passing Codex's -c flags to Hermes breaks startup.
+  if (!['claude', 'codex', 'copilot'].includes(tab) || basename !== tab) return entry;
   const [nodePath, ...serverArgs] = serverCommand(options);
   const args = [...(entry.args ?? [])];
   if (tab === 'claude' || tab === 'copilot') {

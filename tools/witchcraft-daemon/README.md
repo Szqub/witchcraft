@@ -1,6 +1,6 @@
 # Witchcraft daemon
 
-Windows companion for the Witchcraft WoW addon. Requires Node 24 or newer and at least one installed, authenticated Claude Code, Codex CLI or GitHub Copilot CLI installation. The default command starts Claude and Codex; use `--only claude`, `--only codex` or `--only copilot` for one, or `--with-copilot` for all three. Dependencies are pinned in `package-lock.json`.
+Windows companion for the Witchcraft WoW addon. Requires Node 24 or newer and an installed, authenticated agent CLI. The default command starts Claude and Codex; use `--only claude|codex|copilot|hermes|t3code` for one, or combine `--with-copilot`, `--with-hermes` and `--with-t3code` for optional terminals. Hermes and T3 Code are experimental additions in this fork. Dependencies are pinned in `package-lock.json`.
 
 The WoW MCP bridge adds five read-only game-context tools (context, character, quests, progress and Lua errors) and the `wow://context` resource to recognized Claude/Codex/Copilot launches. Guides and Adventures add reference search, quest hints, loot planning, dungeon practice, zone detours and personal campaigns. Fifteen tools are exposed in total: twelve read-only and three explicitly writable local goals/passport tools. The Claude tab joins your own running Claude Code session by default, which Witchcraft did not launch: give it the tools once with `node bin/witchcraft.js mcp-setup --apply` (local scope, sessions started in this checkout only; add the same `--cwd` you give `run`), then restart that session and Witchcraft. Running it again when the same server is registered only repeats the restart advice. The daemon window and the in-game footer say when a joined session lacks the tools, and follow a Claude session restarted in the mirrored console. Its default addon-to-host path is the local binding carrier described below; terminal input always takes priority. `run --no-mcp` opts out of launch-time MCP configuration. The in-game **WoW context** panel controls data sharing. Existing daemon/assistant processes must be restarted or resumed to load this extension.
 
@@ -52,6 +52,9 @@ node bin/witchcraft.js run --only claude
 node bin/witchcraft.js run --only codex
 node bin/witchcraft.js run --only copilot
 node bin/witchcraft.js run --with-copilot
+node bin/witchcraft.js run --only hermes
+node bin/witchcraft.js run --only t3code
+node bin/witchcraft.js run --with-copilot --with-hermes --with-t3code --overlay
 node bin/witchcraft.js run --only claude -- 'C:\path\to\pwsh.exe' -NoLogo
 node bin/witchcraft.js run --cols 120 --rows 40 --hz 1
 ```
@@ -68,11 +71,33 @@ Recognized `copilot` / `copilot.exe` commands receive the WoW server via `--addi
 
 To mirror an existing console, use `--only copilot --attach copilot=PID` (or `copilot=pick`). As with other attached consoles, configure MCP in that Copilot session yourself before attaching; Witchcraft cannot inject launch arguments into an existing process. See [Copilot MCP setup](../../docs/MCP.md#copilot-cli).
 
-Update the addon and daemon together. The new addon accepts older two-tab snapshots, but older addons cannot consume the new three-tab snapshots.
+Update the addon and daemon together. The fork addon accepts older two- and three-tab snapshots, but older addons cannot consume five-tab snapshots.
+
+## Hermes and T3 Code (experimental)
+
+The new tabs are fully separate PTYs with their own terminal output, in-game drafts, history, and input routing. **Both are opt-in.** Update the WoW addon and desktop daemon together from the same fork branch. The normal Claude/Codex launch behavior is unchanged.
+
+**Hermes:** install and authenticate [Hermes Agent for native Windows](https://hermes-agent.nousresearch.com/docs/user-guide/windows-native) first, and verify `hermes --tui` works in a PowerShell window. Then start `node bin/witchcraft.js run --only hermes` or add `--with-hermes` to a normal run. It starts the native TUI with your existing Hermes configuration. If its executable is not found, set `commands.hermes.file` to the full path to `hermes.exe` in `.local/config.json`; it must be a native executable, not a `.cmd` wrapper.
+
+**T3 Code:** install and start [T3 Code](https://github.com/pingdotgg/t3code), then install [t3code-cli](https://github.com/tarik02-org/t3code-cli) separately:
+
+```powershell
+npm.cmd install -g t3code-cli
+t3cli auth local
+t3cli auth status
+t3cli list
+node bin/witchcraft.js run --only t3code --cwd 'C:\path\to\your\project'
+```
+
+For a paired remote T3 Code server, follow `t3cli auth pair` in the CLI's documentation instead of local auth. On Windows the bridge locates the installed npm package's JavaScript entrypoint and executes it with Node; it does not pass any WoW text to PowerShell or `cmd.exe`. If installed somewhere else, set `T3CLI_ENTRY` to that package's absolute `.js` / `.mjs` entrypoint.
+
+Inside the T3 tab, `/threads` lists threads, `/thread THREAD_ID` selects one (copy its ID from T3 Code), `/status` shows the selection, `/help` lists commands and `/exit` ends the local bridge. A regular prompt executes `t3cli ask "..." --thread THREAD_ID`, waiting for its answer. **It can use only an idle existing thread**; the bridge intentionally does not create and archive a new thread for every prompt. Optionally set `T3CODE_THREAD_ID` in the daemon's environment to preselect one. An agent's permissions and costs remain controlled by T3 Code itself. The WoW Interrupt button does not currently cancel a running T3 Code turn.
+
+**WoW MCP:** native Claude, Codex and Copilot launches receive their WoW MCP configuration automatically. These experimental Hermes and T3 Code integrations expose terminal I/O only; neither gets the WoW MCP tools injected by Witchcraft. To give Hermes those tools, use its own MCP configuration mechanism and point it at [`bin/witchcraft-mcp.js`](bin/witchcraft-mcp.js) with `--cache <absolute path to .local/wow-context.json>`; add `--allow-local-writes` only if you want the optional local loot/passport mutations. T3 Code model/provider MCP settings remain managed by T3 Code. Avoid attaching agents with privileged company credentials to a game with untrusted addons.
 
 ## Private local overlay
 
-The desktop overlay is off by default. `run --overlay`, or `"overlay": true` in `.local/config.json`, starts it after the game link is up, and the link never waits for it. It is a same-machine presentation for the daemon's existing Claude, Codex and Copilot PTYs. It uses the pinned Electron runtime and one inherited process IPC channel; it does not open a TCP listener or take ownership of either terminal. Claude, Codex and Copilot have separate tabs (`Alt+1`, `Alt+2`, `Alt+3`). The background-opacity control runs from fully transparent to opaque while terminal text stays readable. HUD mode is click-through; `Ctrl+Shift+H` restores the interactive workbench. `--no-overlay` overrides a saved setting.
+The desktop overlay is off by default. `run --overlay`, or `"overlay": true` in `.local/config.json`, starts it after the game link is up, and the link never waits for it. It is a same-machine presentation for the daemon's existing five agent PTYs. It uses the pinned Electron runtime and one inherited process IPC channel; it does not open a TCP listener or take ownership of the terminals. Claude, Codex, Copilot, Hermes and T3 Code have separate tabs (`Alt+1` through `Alt+5`). The background-opacity control runs from fully transparent to opaque while terminal text stays readable. HUD mode is click-through; `Ctrl+Shift+H` restores the interactive workbench. `--no-overlay` overrides a saved setting.
 
 Overlay startup failure, renderer failure and bounded restart exhaustion leave the PTYs running. The daemon owns the overlay child; the overlay never owns or restarts the terminal processes.
 

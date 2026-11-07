@@ -4,7 +4,7 @@ https://github.com/user-attachments/assets/4ae5190a-4871-4f89-a894-2df423aef8a5
 
 *Real time, uncut: asking Claude about the character from inside the game, then having it fix a Lua error in another addon without leaving WoW.*
 
-**Claude Code, Codex CLI and GitHub Copilot CLI inside WoW Forever.** Talk to your assistant from the game, continue your existing conversations, ask about your character and tracked quests, or have an agent work on your addons while you play. WITCHCRAFT connects the in-game window to the real assistant sessions on your Windows desktop.
+**Claude Code, Codex CLI, GitHub Copilot CLI, Hermes and T3 Code inside WoW Forever.** Talk to your assistant from the game, continue your existing conversations, ask about your character and tracked quests, or have an agent work on your addons while you play. WITCHCRAFT connects the in-game window to the real assistant sessions on your Windows desktop. Hermes and T3 Code are experimental, opt-in terminals in this fork.
 
 *Profession: Prompt Engineering (1/300).*
 
@@ -16,7 +16,7 @@ The addon and companion are **free and open source (MIT)**. Your Claude Code, Co
 
 | Feature | In game |
 |---|---|
-| **Three assistant terminals** | Claude, Codex and Copilot have separate tabs, unsent drafts, prompt history, colored output and scrollback. The Copilot tab appears in game only while Copilot is running or selected. The footer shows model and context usage when available. |
+| **Five assistant terminals** | Claude, Codex, Copilot, Hermes and T3 Code have separate tabs, unsent drafts, prompt history, colored output and scrollback. Optional tabs appear in game only while running or selected. The footer shows model and context usage when available. |
 | **Work on your projects** | Choose the agents' working folder. Continue a running Claude Code session or resume a Codex thread; ask them to inspect, edit and debug the files they can normally access. Their usual permissions still apply. |
 | **Answer terminal prompts** | Use the slash-command menu, numbered choice buttons and **Keys** for permission prompts, model pickers, Enter, Escape, arrows and Interrupt. Unread markers and optional sound/text alerts tell you when an agent needs attention or finishes. |
 | **Compose and reuse prompts** | Shift-click item, quest and spell links into your draft; recall previous prompts; save snippets; or use **/ > Write a long prompt** for multiple lines. Copy the last reply and search the scrollback. |
@@ -31,7 +31,7 @@ Guides and Adventures use a small, source-linked **Classic reference catalog**: 
 | Component | Location | Purpose |
 |---|---|---|
 | WoW addon | [`Witchcraft/`](Witchcraft/) | The in-game window, controls and context capture. |
-| Windows daemon and desktop overlay | [`tools/witchcraft-daemon/`](tools/witchcraft-daemon/) | Connect the game to local Claude Code, Codex and Copilot terminals. |
+| Windows daemon and desktop overlay | [`tools/witchcraft-daemon/`](tools/witchcraft-daemon/) | Connect the game to local Claude Code, Codex, Copilot, Hermes and T3 Code terminals. |
 | MCP server | [`witchcraft-mcp.js`](tools/witchcraft-daemon/bin/witchcraft-mcp.js) | Up to 15 tools over local STDIO: 12 read-only tools and three optional tools that save local goals/passport records. |
 | Claude Code skill | [`.claude/skills/witchcraft-daemon/`](.claude/skills/witchcraft-daemon/) | Start, stop, restart and check the daemon from Claude Code. |
 
@@ -42,6 +42,8 @@ Guides and Adventures use a small, source-linked **Classic reference catalog**: 
 - Windows 10 or 11 and the **WoW Forever** client, interface `16001`.
 - [Node.js](https://nodejs.org/) **24 or newer**.
 - [Claude Code](https://code.claude.com/docs/en/overview), [Codex CLI](https://github.com/openai/codex), or [GitHub Copilot CLI](https://docs.github.com/en/copilot/how-tos/copilot-cli/cli-getting-started), installed and already signed in. The daemon uses native executables (`claude.exe` / `codex.exe` / `copilot.exe`). For npm-installed Copilot on Windows it can also launch the package with Node directly; other `.cmd` and `.bat` wrappers do not work. See [custom executable paths](tools/witchcraft-daemon/README.md#custom-executable-paths) if yours are not found.
+- Optional: [Hermes Agent](https://hermes-agent.nousresearch.com/docs/user-guide/windows-native), installed and authenticated on Windows, for `--with-hermes` / `--only hermes`.
+- Optional: a running [T3 Code](https://github.com/pingdotgg/t3code) server and [t3code-cli](https://github.com/tarik02-org/t3code-cli) (`npm install -g t3code-cli`), for `--with-t3code` / `--only t3code`. The bridge uses the third-party `t3cli` command against an **existing** thread; it does not launch T3 Code or create threads for you.
 - PowerShell for setup. The optional Claude Code management skill requires **PowerShell 7** (`pwsh`).
 
 The default binding carrier is not build-pinned; qualify it once per daemon/UI session with `/witch bindprobe`. The optional cooldown and addon-state carriers remain pinned to the last runtime-qualified build, **1.60.1.70205**, in [`Witchcraft/Evidence.lua`](Witchcraft/Evidence.lua) and stay off on another build. Keep the screen strip calibrated as a separate fallback. This release targets Forever; other WoW clients are outside its compatibility claim.
@@ -105,13 +107,23 @@ From `tools\witchcraft-daemon`, point `--cwd` at the existing project folder you
 node bin/witchcraft.js run --cwd 'C:\path\to\your\project'
 ```
 
-This starts Claude and Codex. Add `--with-copilot` to also start Copilot. `--tab` only picks which terminal the daemon window shows first and never starts one, so `--tab copilot` needs `--with-copilot`, `--only copilot` or a configured `commands.copilot`. **If you only have one assistant installed**, use one of these instead:
+This starts Claude and Codex. Add `--with-copilot`, `--with-hermes` or `--with-t3code` to start optional terminals. Flags can be combined. `--tab` only picks which terminal the daemon window shows first and never starts one, so `--tab hermes` needs `--with-hermes`, `--only hermes` or a configured `commands.hermes`. **If you only have one assistant installed**, use one of these instead:
 
 ```powershell
 node bin/witchcraft.js run --only claude --cwd 'C:\path\to\your\project'
 node bin/witchcraft.js run --only codex --cwd 'C:\path\to\your\project'
 node bin/witchcraft.js run --only copilot --cwd 'C:\path\to\your\project'
+node bin/witchcraft.js run --only hermes --cwd 'C:\path\to\your\project'
+node bin/witchcraft.js run --only t3code --cwd 'C:\path\to\your\project'
 ```
+
+For the full five-tab setup:
+
+```powershell
+node bin/witchcraft.js run --with-copilot --with-hermes --with-t3code --overlay --cwd 'C:\path\to\your\project'
+```
+
+Hermes starts in its native TUI. In the T3 Code tab, use `/threads` to list conversations on your running T3 Code server, then `/thread THREAD_ID` to select one. Each ordinary prompt runs `t3cli ask` on that thread; `/status` inspects it. To preselect a thread, set `T3CODE_THREAD_ID`. On Windows, the bridge resolves npm's `t3code-cli` JavaScript entry directly instead of executing a `.cmd` shell shim. See the [daemon guide](tools/witchcraft-daemon/README.md#hermes-and-t3-code-experimental).
 
 By default, Claude mirrors the newest running interactive Claude Code session in that folder, and Codex resumes the newest top-level Codex thread there. Copilot starts fresh; use `/resume` in its tab to choose a saved conversation. Automatic folder-based session discovery applies to Claude and Codex. A tab with no matching session starts fresh. Add `--no-current` to start fresh deliberately. The daemon window tells you which sessions it joined.
 
@@ -123,7 +135,7 @@ The desktop overlay is off by default. Add `--overlay`, or set `"overlay": true`
 
 1. After starting the daemon, run `/reload` outside combat, then `/witch` or click the minimap book button.
 2. Run `/witch bindprobe` outside combat once per daemon/UI session. Wait for the message confirming host decode, acknowledgement and cleanup succeeded.
-3. Select Claude, Codex or Copilot and send a short prompt. Confirm its reply appears in the same tab. `/witch status` shows connection details if it does not.
+3. Select a running agent tab and send a short prompt. Confirm its reply appears in the same tab. `/witch status` shows connection details if it does not.
 
 The input box's Enter sends your draft; the separate **Enter** button accepts a terminal prompt. Use **Keys** for navigation and Interrupt. The desktop terminal remains usable, and **Ctrl+]** switches its selected agent independently of the game tabs.
 
@@ -133,7 +145,7 @@ Terminal updates pause during combat by default; settings can enable them. Norma
 
 ## Give the assistants WoW context
 
-Terminals WITCHCRAFT launches get the MCP tools automatically. A Claude Code session it **joins** needs the server registered once in the same working folder:
+Recognized Claude Code, Codex and Copilot launches get the MCP tools automatically. **Hermes and T3 Code are terminal integrations only**: game context is not injected into either automatically. A Claude Code session WITCHCRAFT **joins** needs the server registered once in the same working folder:
 
 ```powershell
 node bin/witchcraft.js mcp-setup --apply --cwd 'C:\path\to\your\project'
@@ -186,6 +198,8 @@ The included [witchcraft-daemon skill](.claude/skills/witchcraft-daemon/SKILL.md
 | `Cannot find executable claude`, `codex` or `copilot` | Use `--only` for your installed assistant, or configure its native `.exe` path in [the daemon's local config](tools/witchcraft-daemon/README.md#custom-executable-paths). A working `.cmd` wrapper alone is insufficient; an npm-installed `@github/copilot` is found and run through Node. |
 | `--tab copilot names a terminal that is not started` | `--tab` never starts a terminal. Add `--with-copilot`, use `--only copilot`, or configure `commands.copilot`. |
 | No Copilot tab in game | The tab shows only while Copilot is running or selected. Start the daemon with Copilot, and make sure the addon and daemon are both 0.2.0 or newer; a 0.1.x daemon lists two tabs. |
+| No Hermes or T3 Code tab in game | Both are opt-in. Pass `--with-hermes` / `--with-t3code` (or `--only`), and update the WoW addon and daemon from the **same fork branch**. |
+| T3 Code asks for a thread | Start the T3 Code server, create a conversation there, run `/threads` in game and then `/thread ID`. The `t3cli` bridge does not create a thread on every prompt. |
 | No calibration strip found | Run `/witch calibrate`, leave the strip uncovered, and retry. Calibration captures the virtual desktop once; very large multi-monitor layouts can exceed its 16-million-pixel limit. |
 | Window opens but replies stop | Keep WoW in front when relying on the strip; check `/witch status`, the daemon console and calibration. After a daemon restart, `/reload`, then repeat `/witch bindprobe` outside combat. Combat pauses terminal updates by default. |
 | Joined Claude has no WoW tools | Run `mcp-setup --apply` with the same `--cwd`, then restart that Claude session and the daemon. The footer reports when the joined session lacks the tools. |
@@ -202,6 +216,7 @@ Have an idea? [Describe what you want to do in game](https://github.com/Geraldlo
 ## Security and privacy
 
 - **Every addon you have enabled can type into every running agent session and read their output while the daemon runs.** WoW gives addons no isolation from one another. Run WITCHCRAFT alongside addons you trust as much as a shell.
+- This is especially important when routing a coding agent with broad project permissions into WoW. Do not expose privileged company credentials or production shells through game addons.
 - The bridge uses local files and screen capture and opens no network listener. Calibration captures the virtual desktop once to find the strip; normal capture reads only the calibrated **132 × 12 pixel** region while WoW is foreground. It is active on ordinary `run` after calibration unless `--no-pixels` is set.
 - Session discovery reads local Claude Code and Codex records under `~/.claude` and `~/.codex`. The bridge has no separate upload service. The assistants use their normal providers: prompts, file content and tool results you give them can be sent to those services under their own terms.
 - Game-context sharing starts enabled. Pause it in the footer or with `/witch context off`; the desktop cache clears when the pause reaches the daemon. Normal assistant tool approvals still apply.

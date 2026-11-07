@@ -41,6 +41,8 @@ export function parseArgs(argv) {
     if (token === '--') { child.push(...rest.slice(index + 1)); break; }
     if (token === '--clean') { options.clean = true; continue; }
     if (token === '--with-copilot') { options.withCopilot = true; continue; }
+    if (token === '--with-hermes') { options.withHermes = true; continue; }
+    if (token === '--with-t3code') { options.withT3code = true; continue; }
     if (token === '--no-mcp') { options.noMcp = true; continue; }
     if (token === '--overlay') { options.overlay = true; continue; }
     if (token === '--no-overlay') { options.noOverlay = true; continue; }
@@ -52,7 +54,7 @@ export function parseArgs(argv) {
     if (token === '--attach') {
       const value = rest[++index];
       const [tab, target] = String(value ?? '').split('=');
-      if (!AGENT_TABS.includes(tab) || !target) throw new Error(`--attach takes claude=PID|pick, codex=PID|pick, or copilot=PID|pick`);
+      if (!AGENT_TABS.includes(tab) || !target) throw new Error(`--attach takes ${AGENT_TABS.map(id => `${id}=PID|pick`).join(', ')}`);
       options.attach ??= {};
       if (options.attach[tab] !== undefined) throw new Error(`--attach names the ${tab} tab more than once; a tab mirrors one console`);
       if (target !== 'pick' && !/^[1-9][0-9]*$/u.test(target)) throw new Error(`--attach ${tab}= takes a process id or pick, not ${target}`);
@@ -62,7 +64,7 @@ export function parseArgs(argv) {
     if (!token.startsWith('--') || !values.has(token.slice(2)) || rest[index + 1] === undefined) throw new Error(`Unknown or incomplete option: ${token}`);
     options[token.slice(2)] = rest[++index];
   }
-  for (const key of ['tab', 'only']) if (options[key] && !AGENT_TABS.includes(options[key])) throw new Error(`--${key} must be claude, codex, or copilot`);
+  for (const key of ['tab', 'only']) if (options[key] && !AGENT_TABS.includes(options[key])) throw new Error(`--${key} must be ${AGENT_TABS.join(', ')}`);
   // --only silences the other tabs, so attaching the tab it silenced would give it two answers.
   if (options.only && options.attach && Object.keys(options.attach).some(tab => tab !== options.only)) {
     throw new Error(`--only ${options.only} silences the other tabs, so it cannot also be attached`);
@@ -640,7 +642,7 @@ export function runBurstProbe(config, options = {}, adapters = {}) {
 export async function main(argv = process.argv.slice(2)) {
   const { command, options, child } = parseArgs(argv);
   if (command === 'help' || command === '--help') {
-    console.log(`Witchcraft - separate Claude, Codex and Copilot terminals inside WoW\n\n` +
+    console.log(`Witchcraft - Claude, Codex, Copilot, Hermes and T3 Code terminals inside WoW\n\n` +
       `witchcraft init [--ring 3000] [--clean] [--account NAME] [--character NAME]\n` +
       `witchcraft calibrate [--account NAME]    (show /witch calibrate first)\n` +
       `witchcraft burst-probe [--timeout 30]     (show /witch burstprobe first)\n` +
@@ -649,7 +651,9 @@ export async function main(argv = process.argv.slice(2)) {
       `witchcraft run --attach claude=PID|pick [--attach codex=PID|pick] [--attach copilot=PID|pick]\n` +
       `witchcraft consoles [--all]                (the consoles a tab can mirror)\n` +
       `witchcraft mcp-setup [--apply]             (give a joined Claude session the WoW tools)\n\n` +
-      `run starts Claude and Codex by default. --only claude|codex|copilot starts one. --with-copilot adds Copilot.\n` +
+      `run starts Claude and Codex by default. --only ${AGENT_TABS.join('|')} starts one.\n` +
+      `--with-copilot, --with-hermes, --with-t3code add optional terminals (each independently).\n` +
+      `T3 Code uses the t3cli bridge; choose a thread with /threads and /thread ID in its tab.\n` +
       `--attach mirrors a console you started yourself instead of launching that tab;\n` +
       `type in that console's own window. Its colour is the sixteen ANSI colours.\n` +
       `WoW MCP is added to recognized Claude/Codex/Copilot commands. --no-mcp skips it.\n` +

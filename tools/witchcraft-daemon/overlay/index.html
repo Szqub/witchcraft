@@ -105,6 +105,42 @@
             </span>
             <span class="tab-signal" aria-hidden="true"></span>
           </button>
+          <button
+            id="tab-hermes"
+            class="agent-tab"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="panel-hermes"
+            aria-keyshortcuts="Alt+4"
+            tabindex="-1"
+            data-tab="hermes"
+          >
+            <span class="agent-glyph hermes-glyph" aria-hidden="true">H</span>
+            <span class="agent-copy">
+              <strong>HERMES</strong>
+              <small id="hermes-status">WAITING</small>
+            </span>
+            <span class="tab-signal" aria-hidden="true"></span>
+          </button>
+          <button
+            id="tab-t3code"
+            class="agent-tab"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="panel-t3code"
+            aria-keyshortcuts="Alt+5"
+            tabindex="-1"
+            data-tab="t3code"
+          >
+            <span class="agent-glyph t3code-glyph" aria-hidden="true">T</span>
+            <span class="agent-copy">
+              <strong>T3 CODE</strong>
+              <small id="t3code-status">WAITING</small>
+            </span>
+            <span class="tab-signal" aria-hidden="true"></span>
+          </button>
         </nav>
 
         <div class="rail-controls no-drag">
@@ -179,6 +215,48 @@
             <span class="empty-reticle" aria-hidden="true"></span>
             <strong>AWAITING COPILOT LINK</strong>
             <small>Start the Witchcraft companion to open this channel.</small>
+          </div>
+        </article>
+
+        <article
+          id="panel-hermes"
+          class="terminal-panel"
+          role="tabpanel"
+          aria-labelledby="tab-hermes"
+          data-tab="hermes"
+          hidden
+        >
+          <div class="terminal-chrome" aria-hidden="true">
+            <span>SESSION / HERMES</span>
+            <span class="chrome-rule"></span>
+            <span id="hermes-sequence">NO SIGNAL</span>
+          </div>
+          <div id="terminal-hermes" class="terminal-host" aria-label="Hermes terminal" tabindex="0"></div>
+          <div id="empty-hermes" class="terminal-empty" role="status">
+            <span class="empty-reticle" aria-hidden="true"></span>
+            <strong>AWAITING HERMES LINK</strong>
+            <small>Start the Hermes terminal from the Witchcraft companion.</small>
+          </div>
+        </article>
+
+        <article
+          id="panel-t3code"
+          class="terminal-panel"
+          role="tabpanel"
+          aria-labelledby="tab-t3code"
+          data-tab="t3code"
+          hidden
+        >
+          <div class="terminal-chrome" aria-hidden="true">
+            <span>SESSION / T3 CODE</span>
+            <span class="chrome-rule"></span>
+            <span id="t3code-sequence">NO SIGNAL</span>
+          </div>
+          <div id="terminal-t3code" class="terminal-host" aria-label="T3 Code terminal" tabindex="0"></div>
+          <div id="empty-t3code" class="terminal-empty" role="status">
+            <span class="empty-reticle" aria-hidden="true"></span>
+            <strong>AWAITING T3 CODE LINK</strong>
+            <small>Start the T3 Code bridge from the Witchcraft companion.</small>
           </div>
         </article>
 

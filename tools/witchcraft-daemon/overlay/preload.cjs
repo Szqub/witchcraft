@@ -2,10 +2,10 @@
 
 const { contextBridge, ipcRenderer } = require('electron');
 
-const TABS = new Set(['claude', 'codex', 'copilot']);
+const TABS = new Set(['claude', 'codex', 'copilot', 'hermes', 't3code']);
 
 function tab(value) {
-  if (!TABS.has(value)) throw new TypeError('tab must be claude, codex, or copilot');
+  if (!TABS.has(value)) throw new TypeError('unsupported Witchcraft terminal tab');
   return value;
 }
 

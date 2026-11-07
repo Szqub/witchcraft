@@ -28,6 +28,7 @@ local C = {
     parchHi = { 28, 28, 28 }, parchLo = { 12, 12, 12 }, ink = { 255, 209, 0 }, inkSoft = { 255, 209, 0 },
     text = { 255, 255, 255 }, muted = { 160, 160, 160 },
     claude = { 232, 158, 115 }, claudeDeep = { 196, 110, 66 }, copilot = { 183, 157, 242 }, copilotDeep = { 126, 91, 192 }, codex = { 102, 212, 189 }, codexDeep = { 35, 150, 125 },
+    hermes = { 120, 210, 149 }, hermesDeep = { 55, 142, 88 }, t3code = { 120, 171, 244 }, t3codeDeep = { 54, 93, 178 },
     warning = { 255, 128, 64 }, inkWarn = { 255, 128, 64 }, inkErr = { 255, 26, 26 }, pauseInk = { 255, 128, 64 },
     stale = { 255, 26, 26 }, staleDim = { 153, 20, 20 }, staleText = { 255, 64, 64 }, staleRing = { 178, 26, 26 },
     onAccent = { 26, 15, 8 }, onWarning = { 40, 20, 8 }, tabText = { 255, 255, 255 },
@@ -38,8 +39,17 @@ for key, value in pairs(C) do C[key] = { value[1] / 255, value[2] / 255, value[3
 -- is prefilled for the player to finish; the rest are typed with Enter at once. Pickers they open
 -- (/model, /resume) are driven from Keys. Claude Code's come from its documentation; Codex's from
 -- codex-rs/tui/src/slash_command.rs. Commands that exit, log out or delete a session are left out.
-local TITLES = { claude = "Claude", codex = "Codex", copilot = "Copilot" }
+local TITLES = { claude = "Claude", codex = "Codex", copilot = "Copilot", hermes = "Hermes", t3code = "T3 Code" }
 local COMMANDS = {
+    hermes = {
+        { { "/help", "Hermes command help" }, { "/model", "Change the model" } },
+        { { "/sessions new", "Start another live conversation" }, { "/usage", "Show token and context usage" } },
+    },
+    t3code = {
+        { { "/threads", "List threads on the connected T3 Code server" },
+          { "/thread ", "Choose a thread by ID", args = true } },
+        { { "/status", "Show selected thread" }, { "/help", "Witchcraft T3 Code bridge commands" } },
+    },
     copilot = {
         { { "/model", "Choose the model" }, { "/help", "Command help" } },
         { { "/compact", "Compress the conversation" }, { "/usage", "Session usage" } },
@@ -265,7 +275,7 @@ function View:LayoutHeader(width)
     self.divider:Hide(); self.barDivider:Hide()
     local tabX = 12 + bookSize + 10
     local tabHeight = minimized and 22 or 28
-    -- Copilot is opt-in: a tab the snapshot does not list stays hidden, with its marker.
+    -- Optional tabs not in the snapshot remain hidden with their unread markers.
     local tabIds, listed = self.snapshot and self.snapshot.tabs or { "claude", "codex" }, {}
     for _, id in ipairs(tabIds) do listed[id] = true end
     for id, tab in pairs(self.tabs) do show(tab, listed[id]); if not listed[id] then tab.unread:Hide() end end
@@ -1262,7 +1272,7 @@ function View:IsShown() return self.frame:IsShown() end
 
 function View.Create(controller)
     local self = setmetatable({ controller = controller, rows = {}, drafts = {}, tabs = {}, controls = {}, buttons = {}, settings = {},
-        history = { claude = {}, codex = {}, copilot = {} } }, View)
+        history = { claude = {}, codex = {}, copilot = {}, hermes = {}, t3code = {} } }, View)
     local function makeButton(parent, caption, action, tier, options)
         local widget = button(parent, caption, action, tier, options)
         self.buttons[#self.buttons + 1] = widget; return widget
@@ -1309,7 +1319,7 @@ function View.Create(controller)
     self.brand = text(self.titleBar, 12, C.ink, { justify = "CENTER" }); self.brand:SetText("Witchcraft")
     self.divider = fill(header, C.ink, .4, "ARTWORK")
     self.barDivider = fill(header, C.ink, .4, "ARTWORK")
-    for _, id in ipairs({ "claude", "codex", "copilot" }) do
+    for _, id in ipairs({ "claude", "codex", "copilot", "hermes", "t3code" }) do
         local tabID = id
         local tab = makeButton(header, agentName(id), function() controller:SelectTab(tabID) end, "tab", { size = 11, shadow = false })
         tab:SetFrameLevel(level + 3)

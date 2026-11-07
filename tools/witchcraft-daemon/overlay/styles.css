@@ -376,6 +376,11 @@ textarea:focus-visible,
 .claude-glyph { color: var(--gold); }
 .codex-glyph { color: var(--cyan); }
 .copilot-glyph { color: #b79df2; }
+.hermes-glyph { color: #78d295; }
+.t3code-glyph { color: #78abf4; }
+
+.agent-tab[data-tab="hermes"],
+.agent-tab[data-tab="t3code"] { min-width: 124px; }
 
 .agent-copy {
   display: flex;

@@ -11,6 +11,8 @@ local Binding = ns.Binding
 local CooldownCarrier = ns.CooldownCarrier
 local integer, plain, epoch = Ring.Integer, Ring.Plain, Ring.Epoch
 local actions = { text = true, enter = true, interrupt = true, escape = true, up = true, down = true }
+local TAB_IDS = { "claude", "codex", "copilot", "hermes", "t3code" }
+local VALID_TABS = { claude = true, codex = true, copilot = true, hermes = true, t3code = true }
 -- A bootstrap heartbeat with no host answering is a settings write nobody reads, so its cadence
 -- backs off from the ring's own toward a two-minute floor until something proves a host is there.
 local HEARTBEAT_BASE, HEARTBEAT_CEILING = 8, 120
@@ -70,7 +72,7 @@ ns.Settings = SETTINGS
 
 local function validMessage(message)
     if not plain(message) or not integer(message.id, 1, 262143) or not epoch(message.epoch) then return false end
-    if message.tab ~= "claude" and message.tab ~= "codex" and message.tab ~= "copilot" then return false end
+    if not VALID_TABS[message.tab] then return false end
     if not actions[message.action] or type(message.text) ~= "string" or #message.text > 600 then return false end
     if not ns.Pixel.ValidText(message.text) or (message.action ~= "text" and message.text ~= "") then return false end
     if message.action == "text" and message.text == "" then return false end
@@ -121,7 +123,7 @@ function Persistence.Validate(raw)
         end
     end
     if global.hz ~= nil and not finite(global.hz, 0.125, 2) then return false, "Invalid stream rate" end
-    if global.activeTab ~= nil and global.activeTab ~= "claude" and global.activeTab ~= "codex" and global.activeTab ~= "copilot" then return false, "Invalid tab" end
+    if global.activeTab ~= nil and not VALID_TABS[global.activeTab] then return false, "Invalid tab" end
     if global.view ~= nil and not validView(global.view) then return false, "Invalid saved layout" end
     if global.reloadAwaitHost ~= nil and type(global.reloadAwaitHost) ~= "boolean" then return false, "Invalid reload state" end
     if global.outbox ~= nil then
@@ -172,7 +174,9 @@ end
 local function emptySessions()
     return { { id = "claude", title = "Claude", lines = {}, status = "Waiting for host" },
         { id = "codex", title = "Codex", lines = {}, status = "Waiting for host" },
-        { id = "copilot", title = "Copilot", lines = {}, status = "Waiting for host" } }
+        { id = "copilot", title = "Copilot", lines = {}, status = "Waiting for host" },
+        { id = "hermes", title = "Hermes", lines = {}, status = "Waiting for host" },
+        { id = "t3code", title = "T3 Code", lines = {}, status = "Waiting for host" } }
 end
 
 -- Seconds after an answer's delivery before an identical menu counts as a new question (see AnswerPending).
@@ -212,17 +216,17 @@ function Core.New(global, api)
     -- Terminal output is ephemeral. Preserve legacy cache fields, if any, but
     -- never load them into the view or write new output to SavedVariables.
     self.sessions = emptySessions()
-    self.unread, self.screenText = { claude = false, codex = false, copilot = false }, {}
+    self.unread, self.screenText = { claude = false, codex = false, copilot = false, hermes = false, t3code = false }, {}
     -- The state each agent's screen last reported, and why a tab wants the player: "waiting" on a
     -- choice menu or "done" after working. Both clear when the player looks at that tab.
-    self.agentStates, self.attention = {}, { claude = false, codex = false, copilot = false }
+    self.agentStates, self.attention = {}, { claude = false, codex = false, copilot = false, hermes = false, t3code = false }
     -- Each tab's last answered menu, until the terminal moves on (see AnswerPending).
     self.answered = {}
     self.cols, self.rows = 120, 40
     -- Scrollback position per tab, in rows above the bottom. Memory only: a reload
     -- starts at the live rows, and SavedVariables never carries terminal state.
-    self.scroll = { claude = 0, codex = 0, copilot = 0 }
-    self.scrolledAt = { claude = 0, codex = 0, copilot = 0 }
+    self.scroll = { claude = 0, codex = 0, copilot = 0, hermes = 0, t3code = 0 }
+    self.scrolledAt = { claude = 0, codex = 0, copilot = 0, hermes = 0, t3code = 0 }
     self.heartbeatBackoff, self.heartbeatNextAt = HEARTBEAT_BASE, 0
     if api.Context ~= nil then self.context = api.Context
     elseif ns.Context then self.context = ns.Context.New() end
@@ -708,11 +712,13 @@ function methods:Snapshot()
         context[domain] = { age = math.floor(math.max(0, self:ContextNow() - info.capturedAt)),
             status = info.status, summary = info.summary, count = info.count, truncated = info.truncated }
     end
+    local tabs, unread, attention, answered = {}, {}, {}, {}
+    for _, id in ipairs(TAB_IDS) do
+        if self:TabPresent(id) then tabs[#tabs + 1] = id end
+        unread[id], attention[id], answered[id] = self.unread[id], self.attention[id], self:AnswerPending(id) ~= nil
+    end
     return { sessions = self.sessions, activeTab = self.global.activeTab, cols = self.cols, rows = self.rows,
-        tabs = self:TabPresent("copilot") and { "claude", "codex", "copilot" } or { "claude", "codex" },
-        unread = { claude = self.unread.claude, codex = self.unread.codex, copilot = self.unread.copilot },
-        attention = { claude = self.attention.claude, codex = self.attention.codex, copilot = self.attention.copilot },
-        answered = { claude = self:AnswerPending("claude") ~= nil, codex = self:AnswerPending("codex") ~= nil, copilot = self:AnswerPending("copilot") ~= nil },
+        tabs = tabs, unread = unread, attention = attention, answered = answered,
         snippets = { unpack(self.global.snippets) },
         settings = (function() local copy = {}; for key, value in pairs(self.global.settings) do copy[key] = value end; return copy end)(),
         view = self.global.view, fontSize = self.global.fontSize, opacity = self.global.opacity,
@@ -871,22 +877,25 @@ function methods:FocusInput()
     if self.view and self.view.FocusInput then self.view:FocusInput() end
     return true
 end
--- Copilot is opt-in: its tab is present only while selected or once the host reports it started.
+-- Optional terminals are shown while selected or once the host reports them running.
 function methods:TabPresent(id)
     if id == "claude" or id == "codex" then return true end
-    if id ~= "copilot" then return false end
-    if self.global.activeTab == "copilot" then return true end
+    if not VALID_TABS[id] then return false end
+    if self.global.activeTab == id then return true end
     for _, session in ipairs(self.sessions or {}) do
-        local status = session.id == "copilot" and session.status
+        local status = session.id == id and session.status
         if status and status ~= "not started" and status ~= "Waiting for host" then return true end
     end
     return false
 end
 function methods:NextTab()
-    local following = { claude = "codex", codex = "copilot", copilot = "claude" }
-    local tab = following[self.global.activeTab] or "claude"
-    if not self:TabPresent(tab) then tab = following[tab] end
-    return self:SelectTab(tab)
+    local current = 1
+    for index, id in ipairs(TAB_IDS) do if id == self.global.activeTab then current = index; break end end
+    for offset = 1, #TAB_IDS do
+        local tab = TAB_IDS[(current + offset - 1) % #TAB_IDS + 1]
+        if self:TabPresent(tab) then return self:SelectTab(tab) end
+    end
+    return false
 end
 function methods:Interrupt() return self:Action(self.global.activeTab, "interrupt") end
 
@@ -907,7 +916,7 @@ function methods:RemoveSnippet(index)
 end
 
 function methods:SelectTab(tab)
-    if tab ~= "claude" and tab ~= "codex" and tab ~= "copilot" then return false end
+    if not VALID_TABS[tab] then return false end
     self.global.activeTab = tab
     self:Render()
     return true
@@ -1136,8 +1145,8 @@ function methods:ReceiveChunk(payload)
     end
     global.outbox = retained
     if dropped > 0 then self:Print("Witchcraft dropped " .. dropped .. " queued message(s) for a tab this host does not have") end
-    -- An older host lists two sessions, so a saved Copilot selection falls back rather than queue input the host would never acknowledge.
-    if global.activeTab == "copilot" and not sessionListed(result.sessions, "copilot") then global.activeTab = "claude" end
+    -- A pre-extension host may list fewer sessions; never address a tab it does not have.
+    if not sessionListed(result.sessions, global.activeTab) then global.activeTab = "claude" end
     for _, session in ipairs(result.sessions) do
         local id, text = session.id, screenText(session.lines)
         -- A new host session is a new terminal: an answer recorded for the old one does not carry over.

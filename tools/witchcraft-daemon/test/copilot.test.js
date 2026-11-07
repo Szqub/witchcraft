@@ -68,7 +68,7 @@ test('resolveProgram keeps an absolute configured path without .exe on Windows',
   assert.equal(resolveProgram(configured), configured);
 });
 
-test('three PTYs route input, cycle through running tabs and clean up', async () => {
+test('five PTYs route input, cycle through running tabs and clean up', async () => {
   const writes = [], exits = [];
   const pair = new TerminalPair({ commands: Object.fromEntries(AGENT_TABS.map(tab => [tab, { file: process.execPath, args: [tab] }])),
     spawn(_file, args) {
@@ -80,12 +80,12 @@ test('three PTYs route input, cycle through running tabs and clean up', async ()
   const stdout = Object.assign(new EventEmitter(), { write() {} });
   const display = attachTerminal(pair, { stdin, stdout, initialTab: 'claude' });
   try {
-    assert.deepEqual(pair.snapshot().map(session => session.title), ['Claude', 'Codex', 'Copilot']);
-    stdin.emit('data', Buffer.from('a\x1db\x1dc\x1dd'));
-    assert.deepEqual(writes, [['claude', 'a'], ['codex', 'b'], ['copilot', 'c'], ['claude', 'd']]);
+    assert.deepEqual(pair.snapshot().map(session => session.title), ['Claude', 'Codex', 'Copilot', 'Hermes', 'T3 Code']);
+    stdin.emit('data', Buffer.from('a\x1db\x1dc\x1dd\x1de\x1df'));
+    assert.deepEqual(writes, [['claude', 'a'], ['codex', 'b'], ['copilot', 'c'], ['hermes', 'd'], ['t3code', 'e'], ['claude', 'f']]);
     exits[1]({ exitCode: 0 });
-    stdin.emit('data', Buffer.from('\x1de'));
-    assert.deepEqual(writes.at(-1), ['copilot', 'e']);
+    stdin.emit('data', Buffer.from('\x1dg'));
+    assert.deepEqual(writes.at(-1), ['copilot', 'g']);
   } finally {
     display.dispose();
     for (const exit of exits) exit({ exitCode: 0 });
